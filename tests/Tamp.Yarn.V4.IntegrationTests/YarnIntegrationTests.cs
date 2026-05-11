@@ -33,25 +33,40 @@ public sealed class YarnIntegrationTests : IDisposable
     {
         // We want Yarn Berry 4.x (managed via corepack), NOT a Brew /
         // global Yarn 1 install — Berry's CLI surface is what we wrap.
-        // Walk PATH and pick the first `yarn` whose --version reports 4.x.
+        // Walk PATH and pick the first yarn whose --version reports 4.x.
+        // On Windows, corepack creates yarn.cmd / yarn.ps1 / yarn.exe
+        // rather than a bare `yarn` executable.
         var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
+        var candidateNames = OperatingSystem.IsWindows()
+            ? new[] { "yarn.cmd", "yarn.exe", "yarn.bat", "yarn.ps1", "yarn" }
+            : new[] { "yarn" };
+
         foreach (var dir in pathEnv.Split(Path.PathSeparator))
         {
             if (string.IsNullOrEmpty(dir)) continue;
-            var candidate = Path.Combine(dir, "yarn");
-            if (!File.Exists(candidate)) continue;
-            try
+            foreach (var name in candidateNames)
             {
-                var psi = new System.Diagnostics.ProcessStartInfo(candidate, "--version")
-                { RedirectStandardOutput = true, UseShellExecute = false };
-                using var p = System.Diagnostics.Process.Start(psi);
-                if (p is null) continue;
-                var version = p.StandardOutput.ReadToEnd().Trim();
-                p.WaitForExit();
-                if (version.StartsWith("4.", StringComparison.Ordinal))
-                    return new Tool(AbsolutePath.Create(candidate));
+                var candidate = Path.Combine(dir, name);
+                if (!File.Exists(candidate)) continue;
+                try
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo(candidate, "--version")
+                    {
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        // Windows .cmd / .bat must launch via cmd.exe.
+                        // UseShellExecute=false + a .cmd file works on
+                        // .NET 6+ which uses cmd.exe internally.
+                    };
+                    using var p = System.Diagnostics.Process.Start(psi);
+                    if (p is null) continue;
+                    var version = p.StandardOutput.ReadToEnd().Trim();
+                    p.WaitForExit();
+                    if (version.StartsWith("4.", StringComparison.Ordinal))
+                        return new Tool(AbsolutePath.Create(candidate));
+                }
+                catch { /* skip and keep looking */ }
             }
-            catch { /* skip and keep looking */ }
         }
         throw new InvalidOperationException(
             "Yarn Berry 4.x not found on PATH. Install with: corepack enable && corepack prepare yarn@4 --activate");
