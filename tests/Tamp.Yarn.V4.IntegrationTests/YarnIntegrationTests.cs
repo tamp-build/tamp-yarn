@@ -70,11 +70,16 @@ public sealed class YarnIntegrationTests : IDisposable
     [Fact]
     public void Install_Succeeds_On_Minimal_Project()
     {
+        // Yarn auto-enables immutable mode under CI=true (defensive
+        // default — block "implicit lockfile creation" in CI). Our
+        // bare install test creates the lockfile from scratch, so
+        // override that auto-immutable for this test specifically.
         var tool = ResolveTool();
-        var plan = Yarn.Install(tool, s => s.SetWorkingDirectory(_workdir.Value));
+        var plan = Yarn.Install(tool, s => s
+            .SetWorkingDirectory(_workdir.Value)
+            .SetEnvironmentVariable("YARN_ENABLE_IMMUTABLE_INSTALLS", "false"));
         var result = Run(plan);
         Assert.Equal(0, result.ExitCode);
-        // Yarn writes a lockfile on first install.
         Assert.True(File.Exists(Path.Combine(_workdir.Value, "yarn.lock")),
             "Expected yarn.lock after install.");
     }
@@ -92,12 +97,18 @@ public sealed class YarnIntegrationTests : IDisposable
         Assert.NotEqual(0, result.ExitCode);
     }
 
+    private void EnsureInstalled(Tool tool)
+    {
+        Run(Yarn.Install(tool, s => s
+            .SetWorkingDirectory(_workdir.Value)
+            .SetEnvironmentVariable("YARN_ENABLE_IMMUTABLE_INSTALLS", "false"))).ThrowOnFailure();
+    }
+
     [Fact]
     public void Run_Script_Executes_Node_And_Prints_Hello()
     {
         var tool = ResolveTool();
-        // Need install first so the script can resolve its environment.
-        Run(Yarn.Install(tool, s => s.SetWorkingDirectory(_workdir.Value))).ThrowOnFailure();
+        EnsureInstalled(tool);
 
         var plan = Yarn.Run(tool, s => s
             .SetScript("hello")
@@ -111,23 +122,21 @@ public sealed class YarnIntegrationTests : IDisposable
     public void WorkspacesList_On_Single_Package_Returns_The_Root()
     {
         var tool = ResolveTool();
-        Run(Yarn.Install(tool, s => s.SetWorkingDirectory(_workdir.Value))).ThrowOnFailure();
+        EnsureInstalled(tool);
 
         var plan = YarnWorkspaces.List(tool, s => s
             .SetWorkingDirectory(_workdir.Value)
             .SetJson());
         var result = Run(plan);
         Assert.Equal(0, result.ExitCode);
-        // With one workspace (the root), --json emits one line.
         Assert.Contains(result.StdoutLines, l => l.Contains("tamp-yarn-smoke"));
     }
 
     [Fact]
     public void Raw_Config_Get_Returns_Configured_Value()
     {
-        // Escape hatch: invoke `yarn config get` directly.
         var tool = ResolveTool();
-        Run(Yarn.Install(tool, s => s.SetWorkingDirectory(_workdir.Value))).ThrowOnFailure();
+        EnsureInstalled(tool);
 
         var plan = Yarn.Raw(tool, "config", "get", "nodeLinker");
         plan = plan with { WorkingDirectory = _workdir.Value };
