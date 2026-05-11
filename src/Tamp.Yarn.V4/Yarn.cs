@@ -53,6 +53,30 @@ public static class Yarn
         configure?.Invoke(s);
         return s.ToCommandPlan(tool);
     }
+
+    // ---- Object-init overloads (TAM-161 satellite fanout) ----
+    // Two equivalent authoring styles; both produce identical CommandPlans. Fluent
+    // stays canonical in docs; object-init available for consumers who prefer the
+    // C# initializer shape.
+    //
+    //     Yarn.Install(tool, new() { Immutable = true });
+    //
+    // is equivalent to:
+    //
+    //     Yarn.Install(tool, s => s.SetImmutable());
+    public static CommandPlan Install(Tool tool, YarnInstallSettings settings) => Plan(tool, settings);
+    public static CommandPlan Run(Tool tool, YarnRunSettings settings) => Plan(tool, settings);
+    public static CommandPlan Dlx(Tool tool, YarnDlxSettings settings) => Plan(tool, settings);
+    public static CommandPlan Pack(Tool tool, YarnPackSettings settings) => Plan(tool, settings);
+    public static CommandPlan Dedupe(Tool tool, YarnDedupeSettings settings) => Plan(tool, settings);
+    public static CommandPlan Exec(Tool tool, YarnExecSettings settings) => Plan(tool, settings);
+
+    private static CommandPlan Plan<T>(Tool tool, T settings) where T : YarnSettingsBase
+    {
+        if (tool is null) throw new ArgumentNullException(nameof(tool));
+        if (settings is null) throw new ArgumentNullException(nameof(settings));
+        return settings.ToCommandPlan(tool);
+    }
 }
 
 /// <summary>Sub-facade for <c>yarn workspaces &lt;list|foreach|focus&gt;</c>.</summary>
@@ -73,6 +97,18 @@ public static class YarnWorkspaces
         var s = new T();
         configure?.Invoke(s);
         return s.ToCommandPlan(tool);
+    }
+
+    // ---- Object-init overloads (TAM-161 satellite fanout) ----
+    public static CommandPlan List(Tool tool, YarnWorkspacesListSettings settings) => Plan(tool, settings);
+    public static CommandPlan Foreach(Tool tool, YarnWorkspacesForeachSettings settings) => Plan(tool, settings);
+    public static CommandPlan Focus(Tool tool, YarnWorkspacesFocusSettings settings) => Plan(tool, settings);
+
+    private static CommandPlan Plan<T>(Tool tool, T settings) where T : YarnSettingsBase
+    {
+        if (tool is null) throw new ArgumentNullException(nameof(tool));
+        if (settings is null) throw new ArgumentNullException(nameof(settings));
+        return settings.ToCommandPlan(tool);
     }
 }
 
@@ -97,5 +133,18 @@ public static class YarnNpm
         var s = new T();
         configure?.Invoke(s);
         return s.ToCommandPlan(tool);
+    }
+
+    // ---- Object-init overloads (TAM-161 satellite fanout) ----
+    public static CommandPlan Publish(Tool tool, YarnNpmPublishSettings settings) => Plan(tool, settings);
+    public static CommandPlan TagAdd(Tool tool, YarnNpmTagAddSettings settings) => Plan(tool, settings);
+    public static CommandPlan TagRemove(Tool tool, YarnNpmTagRemoveSettings settings) => Plan(tool, settings);
+    public static CommandPlan Whoami(Tool tool, YarnNpmWhoamiSettings settings) => Plan(tool, settings);
+
+    private static CommandPlan Plan<T>(Tool tool, T settings) where T : YarnSettingsBase
+    {
+        if (tool is null) throw new ArgumentNullException(nameof(tool));
+        if (settings is null) throw new ArgumentNullException(nameof(settings));
+        return settings.ToCommandPlan(tool);
     }
 }
