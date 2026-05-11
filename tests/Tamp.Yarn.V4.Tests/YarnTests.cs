@@ -54,11 +54,15 @@ public sealed class YarnTests
     [InlineData("/Users/scott/.nodenv/shims/yarn")]
     public void Every_Verb_Uses_Tool_Path_As_Executable(string toolPath)
     {
+        // AbsolutePath.Create normalizes through Path.GetFullPath, which
+        // rewrites POSIX-style paths to drive-rooted forms on Windows.
+        // Compare through tool.Executable.Value (lesson from TAM-84).
         var tool = new Tool(AbsolutePath.Create(toolPath));
-        Assert.Equal(toolPath, Yarn.Install(tool).Executable);
-        Assert.Equal(toolPath, Yarn.Pack(tool).Executable);
-        Assert.Equal(toolPath, YarnWorkspaces.List(tool).Executable);
-        Assert.Equal(toolPath, YarnNpm.Whoami(tool).Executable);
+        var expected = tool.Executable.Value;
+        Assert.Equal(expected, Yarn.Install(tool).Executable);
+        Assert.Equal(expected, Yarn.Pack(tool).Executable);
+        Assert.Equal(expected, YarnWorkspaces.List(tool).Executable);
+        Assert.Equal(expected, YarnNpm.Whoami(tool).Executable);
     }
 
     [Fact]

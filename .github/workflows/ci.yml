@@ -33,6 +33,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Yarn Berry 4 is what we wrap; the integration tests probe PATH
+      # for a yarn that reports 4.x. Corepack ships with all GH-hosted
+      # Node installs — `prepare --activate` makes the matching shim.
+      - name: Setup Node + Yarn Berry
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Activate Yarn Berry via corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@4.5.3 --activate
+          yarn --version
+
       - name: Install supported .NET SDKs
         uses: actions/setup-dotnet@v4
         with:
