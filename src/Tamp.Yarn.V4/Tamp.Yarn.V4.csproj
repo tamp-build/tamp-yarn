@@ -10,7 +10,12 @@
     <PackageId>Tamp.Yarn.V4</PackageId>
     <Description>Tamp wrapper for the Yarn Berry 4.x CLI — install, run, dlx, workspaces (list / foreach / focus), npm (publish / tag), pack, dedupe, plus a Raw escape hatch.</Description>
     <IsPackable>true</IsPackable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="$(TampCorePath)" Condition="'$(TampCoreMode)' == 'project'" />
